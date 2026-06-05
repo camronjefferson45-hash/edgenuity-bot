@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Edgenuity Bot",
+  "version": "1.0",
+  "description": "Automate Edgenuity video watching and question answering",
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://student.edgenuity.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://student.edgenuity.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
