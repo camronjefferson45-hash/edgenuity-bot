@@ -4,17 +4,53 @@ const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-
 
 let isRunning = false;
 
+// Create a visible control button on the page
+function createControlButton() {
+  const button = document.createElement('button');
+  button.id = 'edgenuity-bot-control';
+  button.textContent = '▶ START BOT';
+  button.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    padding: 12px 20px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  `;
+  
+  button.addEventListener('click', () => {
+    if (!isRunning) {
+      isRunning = true;
+      button.textContent = '⏸ STOP BOT';
+      button.style.background = '#f44336';
+      console.log('Bot started by user click');
+      startBot();
+    } else {
+      isRunning = false;
+      button.textContent = '▶ START BOT';
+      button.style.background = '#4CAF50';
+      console.log('Bot stopped by user click');
+    }
+  });
+  
+  document.body.appendChild(button);
+  console.log('Control button created');
+}
+
 // Initialize bot
 console.log('Edgenuity Bot loaded');
-
-// Start automation on page load
 window.addEventListener('load', () => {
-  setTimeout(() => startBot(), 1000);
+  setTimeout(() => createControlButton(), 500);
 });
 
 async function startBot() {
-  if (isRunning) return;
-  isRunning = true;
   console.log('Bot started');
 
   while (isRunning) {
