@@ -21,13 +21,14 @@
         "https://r20.core.learn.edgenuity.com/*"
       ],
       "js": ["content.js"],
-      "run_at": "document_start"
+      "run_at": "document_end"
     }
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
+    "default_popup": "popup.html",
     "default_title": "Edgenuity Bot"
   }
 }
