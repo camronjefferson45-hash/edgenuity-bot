@@ -9,19 +9,19 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://*.edgenuity.com/*",
     "https://student.edgenuity.com/*",
+    "https://*.edgenuity.com/*",
     "https://r20.core.learn.edgenuity.com/*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "https://*.edgenuity.com/*",
         "https://student.edgenuity.com/*",
+        "https://*.edgenuity.com/*",
         "https://r20.core.learn.edgenuity.com/*"
       ],
       "js": ["content.js"],
-      "run_at": "document_end"
+      "run_at": "document_start"
     }
   ],
   "background": {
