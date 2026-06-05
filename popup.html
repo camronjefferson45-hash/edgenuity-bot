@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      width: 300px;
+      padding: 15px;
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 15px 0;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4CAF50;
+      color: white;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button.stop {
+      background: #f44336;
+    }
+    button.stop:hover {
+      background: #da190b;
+    }
+    #status {
+      margin-top: 10px;
+      padding: 10px;
+      background: white;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Edgenuity Bot</h1>
+  <button id="startBtn">Start Bot</button>
+  <button id="stopBtn" class="stop">Stop Bot</button>
+  <div id="status">Status: Ready</div>
+  <script src="popup.js"></script>
+</body>
+</html>
