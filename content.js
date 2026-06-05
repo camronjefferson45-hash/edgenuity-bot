@@ -1,5 +1,5 @@
 // Edgenuity Bot - Main automation script
-const API_KEY = 'YOUR_GOOGLE_GEMINI_API_KEY'; // AQ.Ab8RN6KIjdSvXcgwFH7LTNK9RR7uTxYP5PkWbbAeF3y7XzsOVg
+const API_KEY = 'AQ.Ab8RN6KIjdSvXcgwFH7LTNK9RR7uTxYP5PkWbbAeF3y7XzsOVg'; // AQ.Ab8RN6KIjdSvXcgwFH7LTNK9RR7uTxYP5PkWbbAeF3y7XzsOVg
 const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
 let isRunning = false;
