@@ -1,5 +1,5 @@
 // Edgenuity Bot - Main automation script
-const API_KEY = 'AQ.Ab8RN6KIjdSvXcgwFH7LTNK9RR7uTxYP5PkWbbAeF3y7XzsOVg'; // AQ.Ab8RN6KIjdSvXcgwFH7LTNK9RR7uTxYP5PkWbbAeF3y7XzsOVg
+const API_KEY = 'YOUR_GOOGLE_GEMINI_API_KEY'; // Add your API key here
 const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
 let isRunning = false;
@@ -9,7 +9,7 @@ console.log('Edgenuity Bot loaded');
 
 // Start automation on page load
 window.addEventListener('load', () => {
-  startBot();
+  setTimeout(() => startBot(), 1000);
 });
 
 async function startBot() {
@@ -18,27 +18,31 @@ async function startBot() {
   console.log('Bot started');
 
   while (isRunning) {
-    // Check what's on the screen
-    const videoPlayer = document.querySelector('video');
-    const questionScreen = document.querySelector('[class*="question"]') || document.querySelector('[class*="Question"]');
-    const nextButton = findNextButton();
+    try {
+      const videoPlayer = document.querySelector('video');
+      const questionText = getQuestionText();
+      const nextButton = findNextButton();
 
-    if (videoPlayer && !videoPlayer.paused) {
-      // Video is playing
-      console.log('Video playing...');
-      await waitForVideoEnd(videoPlayer);
-    } else if (questionScreen || isQuestionPage()) {
-      // Question screen detected
-      console.log('Question screen detected');
-      await handleQuestion();
-    } else if (nextButton) {
-      // Neutral screen, just click next
-      console.log('Neutral screen detected, clicking next');
-      nextButton.click();
+      if (videoPlayer && !videoPlayer.paused) {
+        // Video is playing
+        console.log('Video playing...');
+        await waitForVideoEnd(videoPlayer);
+      } else if (questionText && questionText.trim().length > 0) {
+        // Question screen detected
+        console.log('Question screen detected');
+        await handleQuestion();
+      } else if (nextButton) {
+        // Neutral screen, just click next
+        console.log('Neutral screen detected, clicking next');
+        nextButton.click();
+        await sleep(2000);
+      } else {
+        // Keep checking
+        await sleep(500);
+      }
+    } catch (error) {
+      console.error('Error in bot loop:', error);
       await sleep(1000);
-    } else {
-      // Keep checking
-      await sleep(500);
     }
   }
 }
@@ -49,16 +53,30 @@ function waitForVideoEnd(video) {
     const checkEnd = setInterval(() => {
       if (video.ended || video.paused) {
         clearInterval(checkEnd);
-        setTimeout(() => resolve(), 1000); // Wait 1s after video ends
+        setTimeout(() => resolve(), 2000); // Wait 2s after video ends
       }
     }, 500);
 
-    // Fallback timeout (15 min max for a video)
+    // Fallback timeout (20 min max for a video)
     setTimeout(() => {
       clearInterval(checkEnd);
       resolve();
-    }, 15 * 60 * 1000);
+    }, 20 * 60 * 1000);
   });
+}
+
+// Get question text from page
+function getQuestionText() {
+  const lines = document.body.innerText.split('\n').filter(line => line.trim().length > 0);
+  
+  // Question is usually in the first 5 lines, typically line 2-3
+  for (let i = 0; i < Math.min(5, lines.length); i++) {
+    const line = lines[i].trim();
+    if (line.length > 20 && !line.includes('Mark this') && !line.includes('Save and Exit')) {
+      return line;
+    }
+  }
+  return null;
 }
 
 // Find the Next button
@@ -66,108 +84,104 @@ function findNextButton() {
   const buttons = document.querySelectorAll('button, a[role="button"]');
   for (let btn of buttons) {
     const text = btn.textContent.toLowerCase().trim();
-    if (text.includes('next') || text.includes('continue')) {
+    // Look for next/submit button, but NOT "Save and Exit"
+    if ((text.includes('next') || text.includes('submit') || text.includes('continue')) && 
+        !text.includes('save') && !text.includes('exit')) {
       return btn;
     }
   }
   return null;
 }
 
-// Check if we're on a question page
-function isQuestionPage() {
-  const pageContent = document.body.innerText.toLowerCase();
-  return pageContent.includes('answer') || pageContent.includes('select') || pageContent.includes('choose');
-}
-
 // Handle question answering
 async function handleQuestion() {
   try {
-    // Extract question text
-    const questionText = extractQuestionText();
+    const questionText = getQuestionText();
     const answers = extractAnswerOptions();
 
     if (!questionText || answers.length === 0) {
-      console.log('Could not extract question, guessing random answer');
+      console.log('Could not extract question properly');
+      console.log('Question:', questionText);
+      console.log('Answers found:', answers.length);
       selectRandomAnswer();
-      await sleep(500);
-      clickNextButton();
       await sleep(1000);
+      clickNextButton();
+      await sleep(2000);
       return;
     }
 
     console.log('Question:', questionText);
-    console.log('Options:', answers);
+    console.log('Answer options count:', answers.length);
 
     // Try to get answer from AI
     const bestAnswer = await getAnswerFromGemini(questionText, answers);
 
-    if (bestAnswer !== null) {
+    if (bestAnswer !== null && bestAnswer >= 0 && bestAnswer < answers.length) {
       console.log('AI selected answer index:', bestAnswer);
       selectAnswerByIndex(bestAnswer);
+      await sleep(500);
     } else {
       console.log('AI failed, selecting random answer');
       selectRandomAnswer();
+      await sleep(500);
     }
 
-    await sleep(500);
     clickNextButton();
-    await sleep(1000);
+    await sleep(2000);
   } catch (error) {
     console.error('Error handling question:', error);
     selectRandomAnswer();
     await sleep(500);
     clickNextButton();
-    await sleep(1000);
+    await sleep(2000);
   }
-}
-
-// Extract question text from page
-function extractQuestionText() {
-  // Try common question containers
-  const containers = [
-    document.querySelector('[class*="question-text"]'),
-    document.querySelector('[class*="QuestionText"]'),
-    document.querySelector('h2, h3, h4'),
-    document.querySelector('p')
-  ];
-
-  for (let container of containers) {
-    if (container && container.textContent.trim().length > 10) {
-      return container.textContent.trim();
-    }
-  }
-
-  return null;
 }
 
 // Extract answer options from page
 function extractAnswerOptions() {
   const answers = [];
 
-  // Try to find answer choices
-  const choiceContainers = [
-    document.querySelectorAll('[class*="choice"]'),
-    document.querySelectorAll('[class*="option"]'),
-    document.querySelectorAll('label input[type="radio"]'),
-    document.querySelectorAll('button[class*="answer"]')
-  ];
-
-  for (let containers of choiceContainers) {
-    if (containers.length > 0) {
-      containers.forEach((container, index) => {
-        const text = container.textContent || container.value || container.getAttribute('aria-label');
-        if (text && text.trim().length > 0) {
-          answers.push({
-            index,
-            text: text.trim(),
-            element: container
-          });
+  // Find all radio buttons
+  const radioInputs = document.querySelectorAll('input[type="radio"]');
+  
+  if (radioInputs.length > 0) {
+    radioInputs.forEach((input, index) => {
+      // Get the label text for this radio button
+      const labelFor = input.getAttribute('id');
+      let label = null;
+      
+      if (labelFor) {
+        label = document.querySelector(`label[for="${labelFor}"]`);
+      }
+      
+      // Try different ways to get the text
+      let text = null;
+      if (label) {
+        text = label.textContent.trim();
+      } else {
+        // Try to find parent label
+        const parentLabel = input.closest('label');
+        if (parentLabel) {
+          text = parentLabel.textContent.trim();
         }
-      });
-      if (answers.length > 0) break;
-    }
+      }
+      
+      // Fallback to value or aria-label
+      if (!text || text.length === 0) {
+        text = input.value || input.getAttribute('aria-label') || '';
+      }
+      
+      if (text && text.length > 0) {
+        answers.push({
+          index: index,
+          text: text,
+          element: input
+        });
+      }
+    });
   }
 
+  console.log('Extracted answers:', answers.map(a => ({ index: a.index, text: a.text.substring(0, 50) })));
   return answers;
 }
 
@@ -179,9 +193,10 @@ async function getAnswerFromGemini(question, answers) {
       return null;
     }
 
-    const answerOptions = answers.map((a, i) => `${i + 1}. ${a.text}`).join('\n');
-    const prompt = `Answer this question by selecting the correct option number (1-${answers.length}):\n\nQuestion: ${question}\n\nOptions:\n${answerOptions}\n\nRespond with ONLY the number of the correct answer, nothing else.`;
+    const answerOptions = answers.map((a, i) => `${i + 1}. ${a.text}`).join('\n\n');
+    const prompt = `Answer this question by selecting the correct option number (1-${answers.length}):\n\nQuestion: ${question}\n\nOptions:\n${answerOptions}\n\nRespond with ONLY the number of the correct answer, nothing else. Example: 2`;
 
+    console.log('Asking AI...');
     const response = await fetch(`${API_URL}?key=${API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -197,6 +212,8 @@ async function getAnswerFromGemini(question, answers) {
 
     const data = await response.json();
     const responseText = data.candidates[0].content.parts[0].text.trim();
+    console.log('AI response:', responseText);
+    
     const answerIndex = parseInt(responseText) - 1;
 
     if (answerIndex >= 0 && answerIndex < answers.length) {
@@ -216,13 +233,12 @@ function selectAnswerByIndex(index) {
   const answers = extractAnswerOptions();
   if (answers[index]) {
     const element = answers[index].element;
-    if (element.tagName === 'INPUT') {
-      element.click();
-    } else if (element.tagName === 'BUTTON') {
-      element.click();
-    } else {
-      element.click();
-    }
+    console.log('Selecting answer:', answers[index].text.substring(0, 50));
+    element.click();
+    element.checked = true;
+    // Trigger change event
+    const event = new Event('change', { bubbles: true });
+    element.dispatchEvent(event);
   }
 }
 
@@ -231,6 +247,7 @@ function selectRandomAnswer() {
   const answers = extractAnswerOptions();
   if (answers.length > 0) {
     const randomIndex = Math.floor(Math.random() * answers.length);
+    console.log('Randomly selecting answer index:', randomIndex);
     selectAnswerByIndex(randomIndex);
   }
 }
@@ -239,7 +256,13 @@ function selectRandomAnswer() {
 function clickNextButton() {
   const nextButton = findNextButton();
   if (nextButton) {
+    console.log('Clicking next button');
     nextButton.click();
+    // Trigger click event
+    const event = new MouseEvent('click', { bubbles: true });
+    nextButton.dispatchEvent(event);
+  } else {
+    console.log('Next button not found');
   }
 }
 
