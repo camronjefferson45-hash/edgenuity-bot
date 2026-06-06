@@ -1,320 +1,190 @@
-// Edgenuity Bot - Main automation script
-const API_KEY = 'YOUR_GOOGLE_GEMINI_API_KEY'; // Add your API key here
-const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+// Edgenuity Bot v2 - Clean rewrite for GA Literature
+console.log('🤖 Edgenuity Bot v2 loaded');
 
-let isRunning = false;
+let botActive = false;
 
-// Create a visible control button on the page
+// Create control button
 function createControlButton() {
-  const button = document.createElement('button');
-  button.id = 'edgenuity-bot-control';
-  button.textContent = '▶ START BOT';
-  button.style.cssText = `
+  if (document.getElementById('edg-bot-btn')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'edg-bot-btn';
+  btn.innerHTML = '▶ START';
+  btn.style.cssText = `
     position: fixed;
     top: 20px;
     right: 20px;
     z-index: 10000;
-    padding: 12px 20px;
+    padding: 10px 16px;
     background: #4CAF50;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 4px;
     font-weight: bold;
-    font-size: 14px;
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   `;
-  
-  button.addEventListener('click', () => {
-    if (!isRunning) {
-      isRunning = true;
-      button.textContent = '⏸ STOP BOT';
-      button.style.background = '#f44336';
-      console.log('Bot started by user click');
-      startBot();
+
+  btn.addEventListener('click', () => {
+    botActive = !botActive;
+    if (botActive) {
+      btn.innerHTML = '⏸ STOP';
+      btn.style.background = '#f44336';
+      console.log('✅ Bot activated');
+      runBot();
     } else {
-      isRunning = false;
-      button.textContent = '▶ START BOT';
-      button.style.background = '#4CAF50';
-      console.log('Bot stopped by user click');
+      btn.innerHTML = '▶ START';
+      btn.style.background = '#4CAF50';
+      console.log('⛔ Bot deactivated');
     }
   });
-  
-  document.body.appendChild(button);
-  console.log('Control button created');
+
+  document.body.appendChild(btn);
+  console.log('✅ Control button created');
 }
 
-// Initialize bot
-console.log('Edgenuity Bot loaded');
-window.addEventListener('load', () => {
-  setTimeout(() => createControlButton(), 500);
-});
-
-async function startBot() {
-  console.log('Bot started');
-
-  while (isRunning) {
+// Main bot loop
+async function runBot() {
+  console.log('🚀 Running bot...');
+  while (botActive) {
     try {
-      const videoPlayer = document.querySelector('video');
-      const questionText = getQuestionText();
-      const nextButton = findNextButton();
-
-      if (videoPlayer && !videoPlayer.paused) {
-        // Video is playing
-        console.log('Video playing...');
-        await waitForVideoEnd(videoPlayer);
-      } else if (questionText && questionText.trim().length > 0) {
-        // Question screen detected
-        console.log('Question screen detected');
-        await handleQuestion();
-      } else if (nextButton) {
-        // Neutral screen, just click next
-        console.log('Neutral screen detected, clicking next');
-        nextButton.click();
-        await sleep(2000);
-      } else {
-        // Keep checking
-        await sleep(500);
+      const video = document.querySelector('video');
+      if (video && !video.ended) {
+        console.log('⏯️ Video playing...');
+        await waitForVideo(video);
+        await sleep(1500);
+        continue;
       }
-    } catch (error) {
-      console.error('Error in bot loop:', error);
+
+      await handleQuestion();
       await sleep(1000);
-    }
-  }
-}
-
-// Wait for video to finish
-function waitForVideoEnd(video) {
-  return new Promise((resolve) => {
-    const checkEnd = setInterval(() => {
-      if (video.ended || video.paused) {
-        clearInterval(checkEnd);
-        setTimeout(() => resolve(), 2000); // Wait 2s after video ends
-      }
-    }, 500);
-
-    // Fallback timeout (20 min max for a video)
-    setTimeout(() => {
-      clearInterval(checkEnd);
-      resolve();
-    }, 20 * 60 * 1000);
-  });
-}
-
-// Get question text from page
-function getQuestionText() {
-  const lines = document.body.innerText.split('\n').filter(line => line.trim().length > 0);
-  
-  // Question is usually in the first 5 lines, typically line 2-3
-  for (let i = 0; i < Math.min(5, lines.length); i++) {
-    const line = lines[i].trim();
-    if (line.length > 20 && !line.includes('Mark this') && !line.includes('Save and Exit')) {
-      return line;
-    }
-  }
-  return null;
-}
-
-// Find the Next button
-function findNextButton() {
-  const buttons = document.querySelectorAll('button, a[role="button"]');
-  for (let btn of buttons) {
-    const text = btn.textContent.toLowerCase().trim();
-    // Look for next/submit button, but NOT "Save and Exit"
-    if ((text.includes('next') || text.includes('submit') || text.includes('continue')) && 
-        !text.includes('save') && !text.includes('exit')) {
-      return btn;
-    }
-  }
-  return null;
-}
-
-// Handle question answering
-async function handleQuestion() {
-  try {
-    const questionText = getQuestionText();
-    const answers = extractAnswerOptions();
-
-    if (!questionText || answers.length === 0) {
-      console.log('Could not extract question properly');
-      console.log('Question:', questionText);
-      console.log('Answers found:', answers.length);
-      selectRandomAnswer();
-      await sleep(1000);
-      clickNextButton();
+    } catch (err) {
+      console.error('❌ Bot error:', err);
       await sleep(2000);
+    }
+  }
+}
+
+// Wait for video to end
+function waitForVideo(video) {
+  return new Promise((resolve) => {
+    if (video.ended) {
+      resolve();
       return;
     }
-
-    console.log('Question:', questionText);
-    console.log('Answer options count:', answers.length);
-
-    // Try to get answer from AI
-    const bestAnswer = await getAnswerFromGemini(questionText, answers);
-
-    if (bestAnswer !== null && bestAnswer >= 0 && bestAnswer < answers.length) {
-      console.log('AI selected answer index:', bestAnswer);
-      selectAnswerByIndex(bestAnswer);
-      await sleep(500);
-    } else {
-      console.log('AI failed, selecting random answer');
-      selectRandomAnswer();
-      await sleep(500);
-    }
-
-    clickNextButton();
-    await sleep(2000);
-  } catch (error) {
-    console.error('Error handling question:', error);
-    selectRandomAnswer();
-    await sleep(500);
-    clickNextButton();
-    await sleep(2000);
-  }
-}
-
-// Extract answer options from page
-function extractAnswerOptions() {
-  const answers = [];
-
-  // Find all radio buttons
-  const radioInputs = document.querySelectorAll('input[type="radio"]');
-  
-  if (radioInputs.length > 0) {
-    radioInputs.forEach((input, index) => {
-      // Get the label text for this radio button
-      const labelFor = input.getAttribute('id');
-      let label = null;
-      
-      if (labelFor) {
-        label = document.querySelector(`label[for="${labelFor}"]`);
-      }
-      
-      // Try different ways to get the text
-      let text = null;
-      if (label) {
-        text = label.textContent.trim();
-      } else {
-        // Try to find parent label
-        const parentLabel = input.closest('label');
-        if (parentLabel) {
-          text = parentLabel.textContent.trim();
-        }
-      }
-      
-      // Fallback to value or aria-label
-      if (!text || text.length === 0) {
-        text = input.value || input.getAttribute('aria-label') || '';
-      }
-      
-      if (text && text.length > 0) {
-        answers.push({
-          index: index,
-          text: text,
-          element: input
-        });
-      }
-    });
-  }
-
-  console.log('Extracted answers:', answers.map(a => ({ index: a.index, text: a.text.substring(0, 50) })));
-  return answers;
-}
-
-// Get answer from Google Gemini AI
-async function getAnswerFromGemini(question, answers) {
-  try {
-    if (!API_KEY || API_KEY === 'YOUR_GOOGLE_GEMINI_API_KEY') {
-      console.warn('API key not set, skipping AI lookup');
-      return null;
-    }
-
-    const answerOptions = answers.map((a, i) => `${i + 1}. ${a.text}`).join('\n\n');
-    const prompt = `Answer this question by selecting the correct option number (1-${answers.length}):\n\nQuestion: ${question}\n\nOptions:\n${answerOptions}\n\nRespond with ONLY the number of the correct answer, nothing else. Example: 2`;
-
-    console.log('Asking AI...');
-    const response = await fetch(`${API_URL}?key=${API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    });
-
-    if (!response.ok) {
-      console.error('Gemini API error:', response.status);
-      return null;
-    }
-
-    const data = await response.json();
-    const responseText = data.candidates[0].content.parts[0].text.trim();
-    console.log('AI response:', responseText);
     
-    const answerIndex = parseInt(responseText) - 1;
+    const checkInterval = setInterval(() => {
+      if (video.ended || video.paused) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 1000);
 
-    if (answerIndex >= 0 && answerIndex < answers.length) {
-      return answerIndex;
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      resolve();
+    }, 25 * 60 * 1000);
+  });
+}
+
+// Main question handler
+async function handleQuestion() {
+  const questionType = detectQuestionType();
+  
+  if (questionType === 'UNKNOWN') {
+    console.log('⏭️ Unknown format, clicking next...');
+    await clickNext();
+    return;
+  }
+
+  console.log('📋 Question type:', questionType);
+
+  switch (questionType) {
+    case 'CHECKBOXES':
+      await handleCheckboxes();
+      break;
+    case 'RADIO_BUTTONS':
+      await handleRadioButtons();
+      break;
+    default:
+      await clickNext();
+  }
+}
+
+// Detect which question format is on screen
+function detectQuestionType() {
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+  if (checkboxes.length > 0) {
+    return 'CHECKBOXES';
+  }
+
+  const radios = document.querySelectorAll('input[type="radio"]');
+  if (radios.length > 0) {
+    return 'RADIO_BUTTONS';
+  }
+
+  const hasDragDrop = document.querySelector('[class*="drop"]') || 
+                      document.querySelector('[draggable="true"]');
+  if (hasDragDrop) {
+    return 'DRAG_DROP';
+  }
+
+  return 'UNKNOWN';
+}
+
+// Handle checkboxes
+async function handleCheckboxes() {
+  console.log('✔️ Handling checkboxes...');
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+  
+  checkboxes.forEach((cb, i) => {
+    if (!cb.checked) {
+      cb.click();
+      console.log(`✓ Checked ${i + 1}`);
     }
+  });
 
-    console.warn('Invalid answer index from AI:', responseText);
-    return null;
-  } catch (error) {
-    console.error('Error calling Gemini API:', error);
-    return null;
-  }
+  await sleep(500);
+  await clickNext();
 }
 
-// Select answer by index
-function selectAnswerByIndex(index) {
-  const answers = extractAnswerOptions();
-  if (answers[index]) {
-    const element = answers[index].element;
-    console.log('Selecting answer:', answers[index].text.substring(0, 50));
-    element.click();
-    element.checked = true;
-    // Trigger change event
-    const event = new Event('change', { bubbles: true });
-    element.dispatchEvent(event);
+// Handle radio buttons
+async function handleRadioButtons() {
+  console.log('🔘 Handling radio buttons...');
+  const radios = document.querySelectorAll('input[type="radio"]');
+  
+  if (radios.length > 0) {
+    radios[0].click();
+    console.log('Selected first option');
   }
+
+  await sleep(500);
+  await clickNext();
 }
 
-// Select random answer
-function selectRandomAnswer() {
-  const answers = extractAnswerOptions();
-  if (answers.length > 0) {
-    const randomIndex = Math.floor(Math.random() * answers.length);
-    console.log('Randomly selecting answer index:', randomIndex);
-    selectAnswerByIndex(randomIndex);
+// Click Next button
+async function clickNext() {
+  const buttons = document.querySelectorAll('button, a[role="button"]');
+  
+  for (let btn of buttons) {
+    const text = btn.innerText.toLowerCase();
+    if ((text.includes('next') || text.includes('continue') || text.includes('submit')) &&
+        !text.includes('previous')) {
+      console.log('→ Clicking Next');
+      btn.click();
+      return;
+    }
   }
+  
+  console.log('⚠️ Next button not found');
 }
 
-// Click next button
-function clickNextButton() {
-  const nextButton = findNextButton();
-  if (nextButton) {
-    console.log('Clicking next button');
-    nextButton.click();
-    // Trigger click event
-    const event = new MouseEvent('click', { bubbles: true });
-    nextButton.dispatchEvent(event);
-  } else {
-    console.log('Next button not found');
-  }
-}
-
-// Helper function: sleep
+// Helper
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(r => setTimeout(r, ms));
 }
 
-// Listen for messages to control bot
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'stop') {
-    isRunning = false;
-    console.log('Bot stopped');
-  } else if (request.action === 'start') {
-    startBot();
-    console.log('Bot started via message');
-  }
-  sendResponse({ status: 'ok' });
+// Initialize
+window.addEventListener('load', () => {
+  setTimeout(createControlButton, 500);
 });
