@@ -2,29 +2,25 @@
   "manifest_version": 3,
   "name": "Edgenuity Bot",
   "version": "2.0",
-  "description": "Automate Edgenuity Literature lessons",
+  "description": "Automate Edgenuity lessons",
   "permissions": [
     "scripting",
-    "activeTab",
-    "tabs"
+    "activeTab"
   ],
   "host_permissions": [
-    "https://student.edgenuity.com/*",
-    "https://*.edgenuity.com/*",
-    "https://r20.core.learn.edgenuity.com/*"
+    "*://student.edgenuity.com/*",
+    "*://r20.core.learn.edgenuity.com/*",
+    "*://*.edgenuity.com/*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "https://student.edgenuity.com/*",
-        "https://*.edgenuity.com/*",
-        "https://r20.core.learn.edgenuity.com/*"
+        "*://student.edgenuity.com/*",
+        "*://r20.core.learn.edgenuity.com/*",
+        "*://*.edgenuity.com/*"
       ],
       "js": ["content.js"],
-      "run_at": "document_end"
+      "run_at": "document_start"
     }
-  ],
-  "action": {
-    "default_title": "Edgenuity Bot"
-  }
+  ]
 }
